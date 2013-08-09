@@ -57,7 +57,7 @@ struct s_rb {
 };
 
 struct s_llrb {
-	rb_node(struct s_llrb) entry;
+	LLRB_ENTRY(s_llrb) entry;
 	uint32_t	key;
 };
 
@@ -83,9 +83,9 @@ s_llrbtree_cmp(struct s_llrb *a, struct s_llrb *b)
         return a->key - b->key;
 }
 
-typedef rb_tree(struct s_llrb) s_llrb_head;
-rb_gen(static __unused, s_llrbtree_, s_llrb_head, struct s_llrb, entry,
-    s_llrbtree_cmp);
+LLRB_HEAD(s_llrbtree, s_llrb);
+LLRB_PROTOTYPE_STATIC(s_llrbtree, s_llrb);
+LLRB_GENERATE_STATIC(s_llrbtree, s_llrb, entry, s_llrbtree_cmp);
 
 LIST_HEAD(s_hashtbl_head, s_hashtbl);
 
@@ -214,7 +214,7 @@ static void
 test_llrbtree(int *keys, int n)
 {
 	struct timeval tstart, tend;
-	s_llrb_head head;
+	struct s_llrbtree head;
 
 	s_llrbtree_new(&head);
 
@@ -227,9 +227,9 @@ test_llrbtree(int *keys, int n)
 
 	gettimeofday(&tstart, NULL);
 
-	TEST(s_llrbtree_insert(&head, elm), 1,
-	    key.key, s_llrbtree_search(&head, &key),
-	    s_llrbtree_remove(&head, elm));
+	TEST(LLRB_INSERT(s_llrbtree, &head, elm), 1,
+	    key.key, LLRB_FIND(s_llrbtree, &head, &key),
+	    LLRB_REMOVE(s_llrbtree, &head, elm));
 
 
 	gettimeofday(&tend, NULL);
