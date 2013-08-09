@@ -39,7 +39,9 @@
 #define __unused
 #endif
 
-static int test_verbose = 0;
+static const int test_opt_verbose = 0;
+static const int test_opt_fragmentation = 0;
+static const int test_opt_random = 1;
 
 struct s1 {
 	char		pad1[5];
@@ -85,6 +87,25 @@ key_cmp(const void *xa, const void *xb)
 	const int *a = xa, *b = xb;
 
 	return (((*a) & THM_KEY_MASK) - ((*b) & THM_KEY_MASK));
+}
+
+static const int test_gen_key_seed = 33554467UL;
+
+static __inline int
+test_gen_next_key(int cur)
+{
+	const uint32_t prime = 0x01000193UL;
+        const u_int8_t *s = (const u_int8_t *)&cur;
+
+	cur *= prime;
+	cur ^= *s++;
+	cur *= prime;
+	cur ^= *s++;
+	cur *= prime;
+	cur ^= *s++;
+	cur *= prime;
+	cur ^= *s++;
+        return cur;
 }
 
 static __inline int
@@ -170,7 +191,7 @@ test_2(int key1, int key2)
 	bucket = THM_FIND(s1_map, &head, e2.key, NULL);
 	assert(THM_BUCKET_FIRST(s1_map, bucket) == &e2);
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("before remove 1\n");
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -188,7 +209,7 @@ test_2(int key1, int key2)
 	bucket = THM_FIND(s1_map, &head, e2.key, NULL);
 	assert(THM_BUCKET_FIRST(s1_map, bucket) == &e2);
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("before remove 2\n");
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -204,7 +225,7 @@ test_2(int key1, int key2)
 	bucket = THM_FIND(s1_map, &head, e2.key, NULL);
 	assert(bucket == NULL);
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("empty\n");
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -359,40 +380,40 @@ test_insert_remove(int *keys, int n)
 		ep->key = keys[i];
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
-		if (test_verbose >= 2) {
+		if (test_opt_verbose >= 2) {
 			printf("insert %d/%d", i, n);
 			test_pool_stats("", &pool);
 		}
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
 		}
 	}
 
-	if (test_verbose) {
+	if (test_opt_verbose >= 1) {
 		printf("insert %d:", n);
 		test_pool_stats("", &pool);
 	}
 
 	for (i = 0; i < n; i += 2) {
 		ep = &elist[i];
-		if (test_verbose >= 2)
+		if (test_opt_verbose >= 2)
 			printf("remove %d/%d: entry=%p\n", i, n, &ep->entry);
 		THM_REMOVE(s1_map, &head, ep);
 	}
-	if (test_verbose) {
+	if (test_opt_verbose >= 1) {
 		printf("remove %d/%d\n", n/2, n);
 		test_pool_stats("", &pool);
 	}
 	for (i = 1; i < n; i+=2) {
 		ep = &elist[i];
-		if (test_verbose >= 2)
+		if (test_opt_verbose >= 2)
 			printf("remove %d/%d: entry=%p\n", i, n, &ep->entry);
 		THM_REMOVE(s1_map, &head, ep);
 	}
-	if (test_verbose) {
+	if (test_opt_verbose >= 1) {
 		printf("remove %d:", n);
 		test_pool_stats("", &pool);
 	}
@@ -527,14 +548,14 @@ test_nfind(int *keys, int n)
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
 		}
 	}
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("nfind %d\n", n);
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -542,7 +563,7 @@ again:
 	for (i = 0; i < n; i++) {
 		int tmp = skeys[i] + 1;
 		if (key_cmp(&tmp, &skeys[i]) >= 0) {
-			if (test_verbose >= 2)
+			if (test_opt_verbose >= 2)
 				printf("nfind %d/%d: skip %d\n", i, n,
 				    skeys[i - 1]);
 			continue;
@@ -600,14 +621,14 @@ test_first(int *keys, int n)
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
 		}
 	}
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("first %d\n", n);
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -674,7 +695,7 @@ test_last(int *keys, int n)
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
@@ -742,14 +763,14 @@ test_next(int *keys, int n)
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
 		}
 	}
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("next %d\n", n);
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -810,14 +831,14 @@ test_prev(int *keys, int n)
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose)
+			if (test_opt_verbose >= 1)
 				printf("alloc new page: %d/%d\n", i, n);
 			thm_pool_new_block(&pool);
 			goto again;
 		}
 	}
 
-	if (test_verbose >= 2) {
+	if (test_opt_verbose >= 2) {
 		printf("next %d\n", n);
 		thm_dump_tree(&head.s1_map_head);
 	}
@@ -855,8 +876,8 @@ again:
 	free(elist);
 }
 
-__unused static void
-test_pool_fragmentation(int n, int chunk)
+static void
+test_pool_fragmentation(int n, int chunk, int seedkey)
 {
 	struct thm_pool pool;
 	THM_HEAD(s1_map) head;
@@ -871,13 +892,15 @@ test_pool_fragmentation(int n, int chunk)
 
 	THM_HEAD_INIT(s1_map, &head, &pool);
 
+	int curkey = seedkey;
 	for (i = 0; i < n; i++) {
 		ep = &elist[i];
-		ep->key = test_gen_random_key() & THM_KEY_MASK;
+		curkey = test_gen_next_key(curkey + i);
+		ep->key = curkey & THM_KEY_MASK;
 again:
 		bucket = THM_INSERT(s1_map, &head, ep);
 		if (bucket == NULL) {
-			if (test_verbose) {
+			if (test_opt_verbose >= 1) {
 				printf("alloc new page: %d/%d", i, n);
 				test_pool_stats("", &pool);
 			}
@@ -1252,7 +1275,7 @@ test_basic(void)
 int
 main(int argc __unused, char **argv __unused)
 {
-	int iter = 100, elems = 50000;
+	const int iter = 100, elems = 50000;
 	int i;
 
 	struct test_descr {
@@ -1269,11 +1292,7 @@ main(int argc __unused, char **argv __unused)
 		{ NULL, NULL },
 	};
 
-	test_verbose = 0;
-
 	test_basic();
-
-	// test_pool_fragmentation(1000, 200);
 
 	for (ti = tests; ti->method != NULL; ti++) {
 		printf("test: %s\n", ti->name);
@@ -1285,7 +1304,13 @@ main(int argc __unused, char **argv __unused)
 		ti->method(test_data_6, sizeof(test_data_6)/4);
 	}
 
-	for (i = 0; i < iter; i++) {
+	if (test_opt_fragmentation != 0) {
+		test_pool_fragmentation(100, 20, test_gen_key_seed);
+		test_pool_fragmentation(10000, 2000, test_gen_key_seed);
+		test_pool_fragmentation(100000, 20000, test_gen_key_seed);
+	}
+
+	for (i = 0; test_opt_random != 0 && i < iter; i++) {
 		if (i % 10 == 0)
 			printf("random test %d/%d: %d elements\n",
 			    i, iter, elems);
