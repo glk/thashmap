@@ -1223,7 +1223,7 @@ again:
 		    ((off + 64) * THM_SLOT_MIN_ENTRIES)));
 	}
 
-	if (ioff < slen) {
+	if (ioff * 2 < slen) {
 		m1 = page->tp_map1 >> ioff;
 		m2 = page->tp_map2 >> ioff;
 		ioff++;
