@@ -403,6 +403,7 @@ main(int argc, char **argv)
 
 		test_thm(keys, n);
 		test_hashtbl(keys, n, 1);
+		test_hashtbl(keys, n, 4);
 		test_hashtbl(keys, n, 8);
 		test_rbtree(keys, n);
 		test_llrbtree(keys, n);
