@@ -97,7 +97,7 @@ benchmark_result(const char *name, intmax_t n,
 
 	t = tend->tv_sec - tstart->tv_sec;
 	t += (double)(tend->tv_usec - tstart->tv_usec) / (double)1000000;
-	printf("%16s: %jd elements in %lf seconds; %lf elements/s\n",
+	printf("%16s: %jd ops in %9.6lf seconds; %12.2lf ops/s\n",
 	    name, n, t, (double)n/t);
 }
 
@@ -137,13 +137,49 @@ benchmark_result(const char *name, intmax_t n,
 		if (r != elm)						\
 			abort();					\
 	}								\
+	for (i = 0; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		remove_subr;						\
+	}								\
+	for (i = 1; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		remove_subr;						\
+	}								\
+	for (i = 0; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		insert_subr;						\
+		if (!(insert_check)) {					\
+			printf("insert failed (aging): %d/%d\n", i, n);	\
+			abort();					\
+		}							\
+	}								\
+	for (i = 2; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		remove_subr;						\
+	}								\
+	for (i = 1; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		insert_subr;						\
+		if (!(insert_check)) {					\
+			printf("insert failed (aging): %d/%d\n", i, n);	\
+			abort();					\
+		}							\
+	}								\
+	for (i = 2; i < n; i += 4) {					\
+		elm = &elm_list[i];					\
+		insert_subr;						\
+		if (!(insert_check)) {					\
+			printf("insert failed (aging): %d/%d\n", i, n);	\
+			abort();					\
+		}							\
+	}								\
 	for (i = 0; i < n; i++) {					\
 		elm = &elm_list[i];					\
 		remove_subr;						\
 	}
 
 static void
-test_thm(int *keys, int n)
+test_thm(int *keys, const int n)
 {
 	struct timeval tstart, tend;
 	struct thm_pool pool;
@@ -182,7 +218,7 @@ test_thm(int *keys, int n)
 }
 
 static void
-test_rbtree(int *keys, int n)
+test_rbtree(int *keys, const int n)
 {
 	struct timeval tstart, tend;
 	struct s_rbtree head;
@@ -211,7 +247,7 @@ test_rbtree(int *keys, int n)
 }
 
 static void
-test_llrbtree(int *keys, int n)
+test_llrbtree(int *keys, const int n)
 {
 	struct timeval tstart, tend;
 	struct s_llrbtree head;
@@ -293,7 +329,7 @@ hashtbl_search(struct s_hashtbl_head *hashtbl, uint32_t hashmask, uint32_t key)
 }
 
 static void
-test_hashtbl(int *keys, int n, int hashdiv)
+test_hashtbl(int *keys, const int n, const int hashdiv)
 {
 	struct timeval tstart, tend;
 	struct s_hashtbl_head *head;
