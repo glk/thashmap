@@ -52,7 +52,6 @@
 #define	LLRBTREE_H
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 /* Node structure. */
 #define	LLRB_ENTRY(a_type)						\
