@@ -42,6 +42,8 @@
 #define RB_COMPAT
 #include "rb.h"
 
+#include "khash-impl.h"
+
 #if !defined(__unused)
 #define __unused
 #endif
@@ -63,6 +65,11 @@ struct s_llrb {
 
 struct s_hashtbl {
 	LIST_ENTRY(s_hashtbl) entry;
+	uint32_t	key;
+};
+
+struct s_khash {
+	uint32_t	entry;
 	uint32_t	key;
 };
 
@@ -88,6 +95,8 @@ LLRB_PROTOTYPE_STATIC(s_llrbtree, s_llrb);
 LLRB_GENERATE_STATIC(s_llrbtree, s_llrb, entry, s_llrbtree_cmp);
 
 LIST_HEAD(s_hashtbl_head, s_hashtbl);
+
+KHASH_MAP_INIT_INT(kh32, struct s_khash *);
 
 static void
 benchmark_result(const char *name, intmax_t n,
@@ -360,6 +369,68 @@ test_hashtbl(int *keys, const int n, const int hashdiv)
 	benchmark_result(namebuf, n, &tstart, &tend);
 }
 
+static __inline bool
+khash_insert(khash_t(kh32) *kh, struct s_khash *elm)
+{
+	int r;
+
+	khint_t k = kh_put(kh32, kh, elm->key, &r);
+	if (r > 0) {
+		kh_value(kh, k) = elm;
+		return true;
+	}
+	return false;
+}
+
+static __inline bool
+khash_remove(khash_t(kh32) *kh, struct s_khash *elm)
+{
+	khint_t k = kh_get(kh32, kh, elm->key);
+	if (k != kh_end(kh)) {
+		kh_del(kh32, kh, k);
+		return true;
+	}
+	return false;
+}
+
+static __inline struct s_khash *
+khash_search(khash_t(kh32) *kh, uint32_t key)
+{
+	khint_t k = kh_get(kh32, kh, key);
+	if (k != kh_end(kh)) {
+		return (kh_value(kh, k));
+	}
+	return (NULL);
+}
+
+static void
+test_khash(int *keys, const int n)
+{
+	struct timeval tstart, tend;
+	struct s_khash *elm, *elm_list, *r;
+	khash_t(kh32) *kh;
+	bool ret;
+	uint32_t key;
+	int i;
+
+	elm_list = malloc(sizeof(*elm) * n);
+	kh = kh_init(kh32);
+
+	gettimeofday(&tstart, NULL);
+
+	TEST(ret = khash_insert(kh, elm), ret == true,
+	    key, khash_search(kh, key),
+	    khash_remove(kh, elm));
+
+	gettimeofday(&tend, NULL);
+
+	free(elm_list);
+	kh_destroy(kh32, kh);
+
+	benchmark_result("khash", n, &tstart, &tend);
+}
+
+
 static int
 key_random(void)
 {
@@ -443,6 +514,7 @@ main(int argc, char **argv)
 		test_hashtbl(keys, n, 8);
 		test_rbtree(keys, n);
 		test_llrbtree(keys, n);
+		test_khash(keys, n);
 	}
 	free(keys);
 
